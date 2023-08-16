@@ -400,7 +400,7 @@ mix.lm = function (X, y, K, lambda, muK, sigK, beta, sigma2, tol=1e-3, maxit=500
     kmeans_mod <- kmeans(X,K)
     lambda <- kmeans_mod$size/sum(kmeans_mod$size)
     muK <- kmeans_mod$centers
-    sigK <- lapply(1:K, function(k) cov(X[which(mod$cluster==k),]))
+    sigK <- lapply(1:K, function(k) cov(X[which(kmeans_mod$cluster==k),]))
   }
   model <- EM.mix(X, y, lambda, muK, sigK, beta, sigma2, tol, maxit, verb)
   #### profile variance 
@@ -480,7 +480,7 @@ mixme.lm = function(Zm, Xv, Zv, y, K, lambda, muK, sigK, alpha, A, sigE, beta, s
     kmeans_mod <- kmeans(Xv,K)
     lambda <- kmeans_mod$size/sum(kmeans_mod$size)
     muK <- kmeans_mod$centers
-    sigK <- lapply(1:K, function(k) cov(Xv[which(mod$cluster==k),]))
+    sigK <- lapply(1:K, function(k) cov(Xv[which(kmeans_mod$cluster==k),]))
   }
   ## ME initial
   if (missing(alpha) | missing(A) | missing(sigE)) {
