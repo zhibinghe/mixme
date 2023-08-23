@@ -5,25 +5,25 @@ array2list = function(X) lapply(seq(dim(X)[3]), function(i) X[,,i])
 # Outer product of each column of a matrix, return a nr*nr*nc array
 outf = function(mat) array(apply(mat, 2, function(x) outer(x,x)), dim=c(nrow(mat), nrow(mat), ncol(mat)))
 
-#' @title Simulate Data for Combination of Gaussian Mixture Model, Measurement Error and Linear Model
+#' @title Simulate Data for Gaussian Mixture Model Combined with Measurement Error and Linear Model
 #' @param n1 Number of units in the main study
 #' @param n2 Number of units in the validation study
 #' @param lambda A vector of size K consisting of mixing probabilities
 #' @param muK A matrix of size K*p containing Gaussian component mean
-#' @param sigK An array of size p*p*K, eacch element is the Gaussian component variance
+#' @param sigK An array of size p*p*K, each element is the Gaussian component variance
 #' @param alpha A vector of size p consisting of intercept in measurement error model
 #' @param A A matrix of size p*p consisting of slope in measurement error model
 #' @param sigE A matrix of size p*P consisting of variance of noise in measurement error model
 #' @param beta A vector of size K consisting of linear coefficients in linear model
 #' @param sigma2 A scalar of variance of random noise in linear model
 #' @param Tn1 A scalar or a vector of size n1, repeat observations of units in Main study 
-#' @param is.diff If ture, the distributions of data in main study and validation study are different
+#' @param is.diff If true, the distributions of data in main study and validation study are different
 #' @return A list with the following elements
 #' \itemize{
-#' \item{Zm} Surogate data in the main study
+#' \item{Zm} Surrogate data in the main study
 #' \item{Xm} True observations in the main study
-#' \item{Zv} Surogate data in the validation study
-#' \item{Xv} Ture observations in the validation study
+#' \item{Zv} Surrogate data in the validation study
+#' \item{Xv} True observations in the validation study
 #' \item{y} The outcome of linear model
 #' \item{cluster.m} The True cluster labels of units in the main study
 #' }
@@ -63,7 +63,7 @@ gendat = function(n1, n2, lambda, muK, sigK, alpha, A, sigE, beta, sigma2, Tn1=1
 #' @param x A vector or a matrix, if x is a matrix, each row is taken to be a quantile
 #' @param lambda A vector of size K consisting of mixing probabilities
 #' @param muK A vector of Gaussian mean
-#' @param sigK A matrix of Gaussain variance matrix
+#' @param sigK A matrix of Gaussin variance matrix
 #' @return A vector of size K consisting of membership probabilities
 #' @export 
 #' 
@@ -73,7 +73,7 @@ prob.member = function(x, lambda, muK, sigK) {
   return(out/rowSums(out))
 }
 
-#' @title Recluster of Poterior Probabilities based on Reference Membership Probabilities
+#' @title Relabel the Clusters of Membership Probability
 #' @description return matched Y corresponding to X
 #' @param X A matrix of size n*K consisting of membership probabilities
 #' @param Y A matrix of size n*K consisting of membership probabilities
@@ -98,23 +98,61 @@ match.c = function(X, Y) {
   return(out)
 }
 
-# Initial values of GMM
-mix.init = function (Zm, Xv, Zv, K) {
-  X = as.matrix(Zm)
-  # dimension
-  p = ncol(X)
-  nm <- nrow(X)
+#' @title Initialization for Various EM Algorithms
+#' @param X Data in main study
+#' @param K Number of clusters
+#' @param Xv Observations in validation study
+#' @param Zv Surrogate data in validation study
+#' @export
+#' @return A list with the following elements:
+#' \itemize{
+#' \item{pi} Initial estimate of mixing probabilities 
+#' \item{mu} A K*p matrix consisting of initial estimate of Gaussian mean 
+#' \item{sigK} An K*p*p array consisting of initial estimate of Gaussian variance
+#' \item{alpha} Initial estimate of intercept in measurement error model
+#' \item{A} Initial estimate of slope in measurement error model
+#' \item{sigE} Initial estimate of variance in measurement error model
+#' }
+#' 
+mix.init = function (X=NULL, K=NULL, Xv=NULL, Zv=NULL) {
   ## GMM initial based on K-means
-  kmeans_mod <- kmeans(X, K)
-  lambda <- kmeans_mod$size/sum(kmeans_mod$size)
-  muK <- kmeans_mod$centers
-  sigK <- lapply(1:K, function(k) cov(X[which(mod$cluster==k),]))
+  if (is.null(X) | is.null(K)) lambda = muK = sigK = NULL
+  else {
+    kmeans_mod <- kmeans(X, K)
+    lambda <- kmeans_mod$size/sum(kmeans_mod$size)
+    muK <- kmeans_mod$centers
+    sigK <- lapply(1:K, function(k) cov(X[which(kmeans_mod$cluster==k),]))
+    sigK <- list2array(sigK)
+  }
   ## ME initial
-  lm_mod <- lm(Zv ~ Xv)
-  alpha <- lm_mod$coef[1,]
-  A <- lm_mod$coef[-1,]
-  sigE <- t(lm_mod$residuals) %*% lm_mod$residuals / (nv - p -1)
+  if (is.null(Xv) | is.null(Zv)) alpha = A = sigE = NULL
+  else {
+    lm_mod <- lm(Zv ~ Xv)
+    alpha <- lm_mod$coef[1,]
+    A <- lm_mod$coef[-1,]
+    sigE <- t(lm_mod$residuals) %*% lm_mod$residuals / (nrow(Xv) - ncol(Xv) -1)
+  }
   return(list(pi=lambda, mu=muK, sigK=sigK, alpha=alpha, A=A, sigE=sigE))
+}
+
+## observed log-likelihood of mixme.lm model
+obs_loglik.mixme = function (Zm, Xv, Zv, y, lambda, muK, sigK, alpha, A, sigE, beta, sigma2) {
+  ## part 1: main study
+  temp <- lapply(1:K, function(k) lambda[k] * dnorm(y, beta[k], sqrt(sigma2)) * 
+                   mvtnorm::dmvnorm(Zm, A %*% muK[k,] + alpha, A %*% sigK[,,k] %*% t(A) + sigE))
+  temp <- do.call(cbind, temp)
+  loglik1 <- log(rowSums(temp))
+  ## part 2: validation study
+  loglik2 <- log(sapply(1:nrow(Zv), function(i) mvtnorm::dmvnorm(Zv[i,], A %*% Xv[i,] + alpha, sigE)))
+  return(c(loglik1, loglik2))
+}
+## observed log-likelihood of mix.lm model
+obs_loglik.mix = function (X, y, lambda, muK, sigK, beta, sigma2) {
+  ## 
+  temp <- lapply(1:K, function(k) lambda[k] * dnorm(y, beta[k], sqrt(sigma2)) * 
+                   mvtnorm::dmvnorm(X, muK[k,], sigK[,,k]))
+  temp <- do.call(cbind, temp)
+  return(log(rowSums(temp)))
 }
 
 #' @title EM Algorithm for Gaussian Mixture Model Combined with Measurement Error Model and Linear Model
@@ -151,7 +189,7 @@ mix.init = function (Zm, Xv, Zv, K) {
 #' }
 #' @export
 #' 
-EM.mixme = function (Zm, Xv, Zv, y, lambda, muK, sigK, alpha, A, sigE, beta, sigma2, tol=1e-3, maxit=5000, verb=FALSE, is.profile=FALSE) {
+EM.mixme = function (Zm, Xv, Zv, y, lambda, muK, sigK, alpha, A, sigE, beta, sigma2, tol=1e-5, maxit=5000, verb=FALSE, is.profile=FALSE) {
   K <- length(lambda); nm <- nrow(Zm); nv <- nrow(Zv)
   ## E(Zi|Gi=k), return a K*p matrix
   Ezg = function(muK, alpha, A) t(A %*% t(muK) + alpha)
@@ -236,29 +274,31 @@ EM.mixme = function (Zm, Xv, Zv, y, lambda, muK, sigK, alpha, A, sigE, beta, sig
   ## update lambda
   hatlambda = function(tildeomg1) colSums(tildeomg1)/nm
   ## update muK
-  hatmuK = function(tildemuK1,tildeomg1) do.call(rbind, lapply(1:K,function(k) colSums(Egxz(k,tildemuK1, tildeomg1))/sum(tildeomg1[,k])))
+  hatmuK = function(tildemuK1, tildeomg1) do.call(rbind, lapply(1:K,function(k) colSums(Egxz(k,tildemuK1, tildeomg1))/sum(tildeomg1[,k])))
   ## update sigK
-  hatsigK = function(tildemuK1,tildesigK1,tildeomg1,muK)
+  hatsigK = function(tildemuK1, tildesigK1, tildeomg1, muK)
     list2array(lapply(1:K, function(k) Reduce("+",array2list(Egxxz(k,tildemuK1, tildesigK1, tildeomg1, muK[k,]))) / sum(tildeomg1[,k]) ))
-  ## update  beta
-  hatbeta = function(tildeomg1,y) colSums(tildeomg1 * y) / colSums(tildeomg1)
+  ## update beta
+  hatbeta = function(tildeomg1, y) colSums(tildeomg1 * y) / colSums(tildeomg1)
   ##
   hatsigma2 = function(sigma0, beta, beta0, tildeomg1) sigma0^2 + sum(t(tildeomg1) * (beta - beta0)^2)/nm
+  #### log-likelihood
+  
   #### EM Iteration
   count <- 0
   diff <- 1
+  loglik <- sum(obs_loglik.mixme(Zm, Xv, Zv, y, lambda, muK, sigK, alpha, A, sigE, beta, sigma2))
   while (count < maxit & diff > tol) {
-    # record estimate difference
-    alpha0 <- alpha; A0 <- A; sigE0 <- sigE
-    lambda0 <- lambda; muK0 <- muK; sigK0 <- sigK
+    #
     beta0 <- beta; sigma0 <- sqrt(sigma2)
+    old_loglik <- loglik
     ## Update E Step
     Ezg1 <- Ezg(muK, alpha, A)
     Vzg1 <- Vzg(sigK, alpha, sigE)
     tildemuKsigK1 <- tildemuKsigK(Zm, muK, sigK, alpha, A, sigE)
     tildemuK1 <- tildemuKsigK1$tildemuK
     tildesigK1 <- tildemuKsigK1$tildesigK
-    tildeomg1 <- tildeomg(Zm, lambda0, Ezg1, Vzg1, tildemuK1, tildesigK1, y, beta0, sigma0^2)
+    tildeomg1 <- tildeomg(Zm, lambda, Ezg1, Vzg1, tildemuK1, tildesigK1, y, beta, sigma2)
     Exz1 <- Exz(tildemuK1, tildeomg1)
     Exxz1 <- Exxz(tildemuK1, tildesigK1, tildeomg1)
     # combine Z and combine EX
@@ -278,22 +318,20 @@ EM.mixme = function (Zm, Xv, Zv, y, lambda, muK, sigK, alpha, A, sigE, beta, sig
       sigma2 <- hatsigma2(sigma0, beta, beta0, tildeomg1)
     }
     ## convergence criterion
-    if (is.profile) diff <- max(c(max(abs(alpha - alpha0)), max(abs(A - A0)), max(abs(sigE - sigE0)),
-                                  max(abs(lambda - lambda0)), max(abs(muK - muK0)), max(abs(sigK - sigK0))))
-    else diff <- max(c(max(abs(alpha - alpha0)), max(abs(A - A0)), max(abs(sigE - sigE0)),
-                  max(abs(lambda - lambda0)), max(abs(muK - muK0)), max(abs(sigK - sigK0)),
-                  max(abs(beta - beta0)), max(abs(sqrt(sigma2) - sigma0))))
+    loglik <- sum(obs_loglik.mixme(Zm, Xv, Zv, y, lambda, muK, sigK, alpha, A, sigE, beta, sigma2))
+    diff <- abs(loglik - old_loglik)
     count <- count + 1
-    if(verb) cat("iteration = ",count, "max.coefdiff = ", diff, "\n")
+    if(verb) cat("iteration = ", count, "Log-likelihood diff is ", diff, 
+                 "Observed log-likelihood is ", loglik, "\n")
   }
   return(list(pi=lambda, mu=muK, sigK=sigK, alpha=alpha, A=A, sigE=sigE, beta=beta, sigma2=sigma2,
-              posterior=tildeomg1, iter=count))
+              posterior=tildeomg1, iter=count, loglik=loglik))
 }
 
 #' @title EM Algorithm for Gaussian Mixture Model Combined with Linear Model
 #' @param X Surrogate data or observations in main study
 #' @param y Responses in outcome model
-#' @param lambda A vector of size K containing initial value of mixting probabilities
+#' @param lambda A vector of size K containing initial value of mixing probabilities
 #' @param muK A matrix of size K * p containing initial values of component mean, K-means center is specified if NULL
 #' @param sigK An array with size p*p*K containing K p*p matrix, each of which is initial values of component variance,
 #' K-means variance is specified if NULL
@@ -315,7 +353,7 @@ EM.mixme = function (Zm, Xv, Zv, y, lambda, muK, sigK, alpha, A, sigE, beta, sig
 #' }
 #' @export
 #' 
-EM.mix = function (X, y, lambda, muK, sigK, beta, sigma2, tol=1e-3, maxit=5000, verb=FALSE, is.profile=FALSE) {
+EM.mix = function (X, y, lambda, muK, sigK, beta, sigma2, tol=1e-5, maxit=5000, verb=FALSE, is.profile=FALSE) {
   #### E-step
   K <- length(lambda); nm <- nrow(X)
   ## Pr(Gi=k|Yi) return a n*K matrix
@@ -339,12 +377,13 @@ EM.mix = function (X, y, lambda, muK, sigK, beta, sigma2, tol=1e-3, maxit=5000, 
   #### EM Iteration
   count <- 0
   diff <- 1
+  loglik <- sum(obs_loglik.mix(X, y, lambda, muK, sigK, beta, sigma2))
   while (count < maxit & diff > tol){
-    # record estimate difference
-    lambda0 <- lambda; muK0 <- muK; sigK0 <- sigK
+    #
+    old_loglik <- loglik
     beta0 <- beta; sigma0 <- sqrt(sigma2)
     ## Update E Step
-    tildeomg1 <- tildeomg(lambda0, X, y, beta0, sigma0^2, muK0, sigK0)
+    tildeomg1 <- tildeomg(lambda, X, y, beta, sigma2, muK, sigK)
     ## Update M Step
     lambda <- hatlambda(tildeomg1)
     muK <- hatmuK(tildeomg1)
@@ -355,13 +394,13 @@ EM.mix = function (X, y, lambda, muK, sigK, beta, sigma2, tol=1e-3, maxit=5000, 
       sigma2 <- hatsigma2(sigma0, beta, beta0, tildeomg1)
     }
     ## convergence criterion
-    if (is.profile) diff <- max(c(max(abs(lambda - lambda0)), max(abs(muK - muK0)), max(abs(sigK - sigK0))))
-    else diff <- max(c(max(abs(lambda - lambda0)), max(abs(muK - muK0)), max(abs(sigK - sigK0)),
-                  max(abs(beta - beta0)), max(abs(sqrt(sigma2) - sigma0))))
+    loglik <- sum(obs_loglik.mix(X, y, lambda, muK, sigK, beta, sigma2))
+    diff <- abs(loglik - old_loglik)
     count <- count + 1
-    if(verb) cat("iteration = ", count, "max.coefdiff = ", diff, "\n")
+    if(verb) cat("iteration = ", count, "Log-likelihood diff is ", diff, 
+                 "Observed log-likelihood is ", loglik, "\n")
   }
-  return(list(pi=lambda, mu=muK, sigK=sigK, beta=beta, sigma2=sigma2, posterior=tildeomg1, iter=count))
+  return(list(pi=lambda, mu=muK, sigK=sigK, beta=beta, sigma2=sigma2, posterior=tildeomg1, iter=count, loglik=loglik))
 }
 
 #' @title Gaussian Mixture Model Combined with Linear Model
@@ -391,16 +430,16 @@ EM.mix = function (X, y, lambda, muK, sigK, beta, sigma2, tol=1e-3, maxit=5000, 
 #' }
 #' @export
 #' 
-mix.lm = function (X, y, K, lambda, muK, sigK, beta, sigma2, tol=1e-3, maxit=5000, verb=TRUE, variance=TRUE) {
+mix.lm = function (X, y, K, lambda, muK, sigK, beta, sigma2, tol=1e-5, maxit=5000, verb=TRUE, variance=TRUE) {
   X <- as.matrix(X)
   p <- ncol(X)
   nm <- nrow(X)
   ## GMM initial based on K-means
   if (missing(lambda) | missing(muK) | missing(sigK)) {
-    kmeans_mod <- kmeans(X,K)
-    lambda <- kmeans_mod$size/sum(kmeans_mod$size)
-    muK <- kmeans_mod$centers
-    sigK <- lapply(1:K, function(k) cov(X[which(kmeans_mod$cluster==k),]))
+    kmeans_mod <- mix.init(X, K)
+    lambda <- kmeans_mod$pi
+    muK <- kmeans_mod$mu
+    sigK <- kmeans_mod$sigK
   }
   model <- EM.mix(X, y, lambda, muK, sigK, beta, sigma2, tol, maxit, verb)
   #### profile variance 
@@ -423,7 +462,7 @@ mix.lm = function (X, y, K, lambda, muK, sigK, beta, sigma2, tol=1e-3, maxit=500
 #' @return output of mixtools::mvnormalmixEM
 #' @export
 #' 
-mereg = function(Zm, Xv, Zv, lambda, muK, sigK, tol=1e-3, maxit=5000, verb=FALSE) {
+mereg = function(Zm, Xv, Zv, lambda, muK, sigK, tol=1e-5, maxit=5000, verb=FALSE) {
   mod.dat <- as.data.frame(cbind(Xv, Zv))
   colnames(mod.dat) <- c(paste("X", 1:ncol(Xv), sep=""), paste("Z", 1:ncol(Zv), sep=""))
   Zm <- as.data.frame(Zm)
@@ -471,23 +510,23 @@ mereg = function(Zm, Xv, Zv, lambda, muK, sigK, tol=1e-3, maxit=5000, verb=FALSE
 #' @export
 #' 
 mixme.lm = function(Zm, Xv, Zv, y, K, lambda, muK, sigK, alpha, A, sigE, beta, sigma2,
-                    tol=1e-3, maxit=5000, verb=TRUE, variance=TRUE) {
+                    tol=1e-5, maxit=5000, verb=TRUE, variance=TRUE) {
   #### mixme EM algorithm 
   Zm <- as.matrix(Zm); Zv <- as.matrix(Zv); Xv <- as.matrix(Xv)
   p <- ncol(Xv); nm <- nrow(Zm); nv <- nrow(Zv)
   ## GMM initial
   if (missing(lambda) | missing(muK) | missing(sigK)) {
-    kmeans_mod <- kmeans(Xv,K)
-    lambda <- kmeans_mod$size/sum(kmeans_mod$size)
-    muK <- kmeans_mod$centers
-    sigK <- lapply(1:K, function(k) cov(Xv[which(kmeans_mod$cluster==k),]))
+    kmeans_mod <- mix.init(X=Xv, K=K)
+    lambda <- kmeans_mod$pi
+    muK <- kmeans_mod$mu
+    sigK <- kmeans_mod$sigK
   }
   ## ME initial
   if (missing(alpha) | missing(A) | missing(sigE)) {
-    lm_mod <- lm(Zv ~ Xv)
-    alpha <- lm_mod$coef[1,]
-    A <- lm_mod$coef[-1,]
-    sigE <- t(lm_mod$residuals) %*% lm_mod$residuals / (nv - p -1)
+    kmeans_mod <- mix.init(Xv=Xv, Zv=Zv)
+    alpha <- kmeans_mod$alpha
+    A <- kmeans_mod$A
+    sigE <- kmeans_mod$sigE
   }
   ## LM initial
   model <- EM.mixme(Zm, Xv, Zv, y, lambda, muK, sigK, alpha, A, sigE, beta, sigma2, 
@@ -518,25 +557,8 @@ mixme.lm = function(Zm, Xv, Zv, y, K, lambda, muK, sigK, alpha, A, sigE, beta, s
 #' 
 mixme.variance = function(Zm, Xv, Zv, y, lambda, muK, sigK, alpha, A, sigE, beta, sigma2) {
   ##
-  log_obs = function(y=NULL, z, x=NULL, lambda, muK, sigK, alpha, A, sigE, beta, sigma2, source=c("main","valid")) {
-    if (source == "main") {
-      temp <- sapply(1:K, function(k) lambda[k] * dnorm(y,beta[k], sqrt(sigma2)) * 
-                       mvtnorm::dmvnorm(z, A %*% muK[k,] + alpha, A %*% sigK[,,k] %*% t(A) + sigE))
-      return(log(sum(temp)))
-    }
-    if (source == "valid") return(log(mvtnorm::dmvnorm(z, A %*% x + alpha, sigE)))
-  }
-  nm = nrow(Zm); nv = nrow(Zv)
-  # compute log-likelihood  
-  log.theta <- rep(NA, nm+nv)
-  for (i in 1:nm) {
-    log.theta[i] <- log_obs(y=y[i], z=Zm[i,], lambda=lambda, muK=muK, sigK=sigK, alpha=alpha, A=A,
-                            sigE=sigE, beta=beta, sigma2=sigma2, source="main")
-  }
-  for (i in (nm+1):(nm+nv)) {
-    log.theta[i] <- log_obs(z=Zv[i-nm,], x=Xv[i-nm,], lambda=lambda, muK=muK, sigK=sigK, alpha=alpha, A=A,
-                            sigE=sigE, beta=beta, sigma2=sigma2, source="valid")
-  }
+  nm <- nrow(Zm); nv <- nrow(Xv)
+  log.theta <- obs_loglik.mixme(Zm, Xv, Zv, y, lambda, muK, sigK, alpha, A, sigE, beta, sigma2)
   log.profile <- matrix(NA, nr=nm+nv, nc=K+1)
   theta.profile <- c(beta, sigma2)
   # compute profile log-likelihood
@@ -546,18 +568,9 @@ mixme.variance = function(Zm, Xv, Zv, y, lambda, muK, sigK, alpha, A, sigE, beta
     theta.profile.new <- theta.profile + hn
     est.nuisance <- EM.mixme(Zm, Xv, Zv, y, lambda, muK, sigK, alpha, A, sigE, beta=theta.profile.new[1:K], 
                              sigma2=theta.profile.new[K+1], is.profile=TRUE)
-    for (i in 1:nm) {
-      log.profile[i,j] <- log_obs(y=y[i], z=Zm[i,], lambda=est.nuisance$pi, muK=est.nuisance$mu,
-                                  sigK=est.nuisance$sigK, alpha=est.nuisance$alpha, A=est.nuisance$A,
-                                  sigE=est.nuisance$sigE, source="main",
-                                  beta=theta.profile.new[1:K], sigma2=theta.profile.new[K+1])
-    }
-    for (i in (nm+1):(nm+nv)) {
-      log.profile[i,j] <- log_obs(z=Zm[i-nm,], x=Xv[i-nm,], lambda=est.nuisance$pi, muK=est.nuisance$mu,
-                                  sigK=est.nuisance$sigK, alpha=est.nuisance$alpha, A=est.nuisance$A,
-                                  sigE=est.nuisance$sigE, source="valid",
-                                  beta=theta.profile.new[1:K], sigma2=theta.profile.new[K+1])
-    }
+    log.profile[,j] <- obs_loglik.mixme(Zm, Xv, Zv, y, est.nuisance$pi, est.nuisance$mu, est.nuisance$sigK,
+                                        est.nuisance$alpha, est.nuisance$A, est.nuisance$sigE,
+                                        theta.profile.new[1:K], theta.profile.new[K+1]) 
   }
   diff.profile <- (log.profile - log.theta) * sqrt(nm+nv)
   covariance <- solve(t(diff.profile) %*% diff.profile)
@@ -578,32 +591,20 @@ mixme.variance = function(Zm, Xv, Zv, y, lambda, muK, sigK, alpha, A, sigE, beta
 #' @return A variance-covariance matrix of (\code{beta}, \code{sigma2})
 #'
 mix.variance = function(X, y, lambda, muK, sigK, beta, sigma2) {
-  ##
-  log_obs = function(x, y, lambda, muK, sigK, beta, sigma2) {
-    temp <- sapply(1:K, function(k) lambda[k] * dnorm(y, beta[k], sqrt(sigma2)) * 
-                     mvtnorm::dmvnorm(x, muK[k,], sigK[,,k]))
-    return(log(sum(temp)))
-  }
+  # compute log-likelihood 
+  log.theta <- obs_loglik.mix(X, y, lambda, muK, sigK, beta, sigma2)
+  # compute profile log-likelihood
   nm <- nrow(X)
-  # compute log-likelihood  
-  log.theta <- rep(NA, nm)
-  for (i in 1:nm) {
-    log.theta[i] <- log_obs(x=X[i,], y=y[i], lambda=lambda, muK=muK, sigK=sigK,
-                            beta=beta, sigma2=sigma2)
-  }
   log.profile <- matrix(NA, nr=nm, nc=K+1)
   theta.profile <- c(beta, sigma2)
-  # compute profile log-likelihood
   for(j in 1:(K+1)) {
     hn <- rep(0, K+1)
     hn[j] <- 1/sqrt(nm)
     theta.profile.new <- theta.profile + hn
     est.nuisance <- EM.mix(X, y, lambda, muK, sigK, beta=theta.profile.new[1:K], 
                              sigma2=theta.profile.new[K+1], is.profile=TRUE)
-    for (i in 1:nm) {
-      log.profile[i,j] <- log_obs(x=X[i,], y=y[i], lambda=est.nuisance$pi, muK=est.nuisance$mu, 
-                                  sigK=est.nuisance$sigK, beta=theta.profile.new[1:K], sigma2=theta.profile.new[K+1])
-    }
+    log.profile[,j] <- obs_loglik.mix(X, y, est.nuisance$pi, est.nuisance$mu, est.nuisance$sigK,
+                                      theta.profile.new[1:K], theta.profile.new[K+1])
   }
   diff.profile <- (log.profile - log.theta) * sqrt(nm)
   covariance <- solve(t(diff.profile) %*% diff.profile)
