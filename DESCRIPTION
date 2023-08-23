@@ -2,10 +2,9 @@ Package: mixme
 Type: Package
 Title: Simultaneously Estimate Gaussian Mixture Model Combined with Measurement error and Linear Outcome Model
 Version: 1.1.0
-Author: Zhibing He 
+Author: Zhibing He
 Maintainer: Zhibing He <zhibingh@asu.edu>
 Description: Simultaneously Estimate Gaussian Mixture Model Combined with Measurement error and Linear Outcome Model
-Imports: mvtnorm, mixtools
 Suggests: plotly
 License: GPL-3
 Encoding: UTF-8
