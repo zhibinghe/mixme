@@ -3,6 +3,7 @@
 export(EM.mix)
 export(EM.mixme)
 export(gendat)
+export(gmm.sel)
 export(mereg)
 export(mix.init)
 export(mix.lm)
