@@ -25,7 +25,7 @@ outf = function(mat) array(apply(mat, 2, function(x) outer(x,x)), dim=c(nrow(mat
 #' \item{Zv} Surrogate data in the validation study
 #' \item{Xv} True observations in the validation study
 #' \item{y} The outcome of linear model
-#' \item{cluster.m} The True cluster labels of units in the main study
+#' \item{cluster.m} The true cluster labels of units in the main study
 #' }
 #' @export
 #' 
@@ -195,10 +195,9 @@ mix.lm = function (X, y, K, lambda, muK, sigK, beta, sigma2, tol=1e-5, maxit=500
   }
   model <- EM.mix(X, y, lambda, muK, sigK, beta, sigma2, tol, maxit, verb)
   #### profile variance 
-  if (variance) {
-    temp <- mix.variance(X, y, model$pi, model$mu, model$sigK, model$beta, model$sigma2)
-    model$variance <- temp
-  }
+  temp <- NULL
+  if (variance) temp <- mix.variance(X, y, model$pi, model$mu, model$sigK, model$beta, model$sigma2)
+  model$variance <- temp
   return(model)
 }
 
@@ -284,7 +283,8 @@ mixme.lm = function(Zm, Xv, Zv, y, K, lambda, muK, sigK, alpha, A, sigE, beta, s
   model <- EM.mixme(Zm, Xv, Zv, y, lambda, muK, sigK, alpha, A, sigE, beta, sigma2, 
                     tol=tol, maxit=maxit, verb=verb, is.profile=FALSE)
   #### profile variance 
-  temp <- mixme.variance(Zm, Xv, Zv, y, model$pi, model$mu, model$sigK, model$alpha, model$A, model$sigE,
+  temp <- NULL
+  if (variance) mixme.variance(Zm, Xv, Zv, y, model$pi, model$mu, model$sigK, model$alpha, model$A, model$sigE,
                          model$beta, model$sigma2)
   model$variance <- temp
   return(model)

@@ -16,7 +16,7 @@
 #' @param tol The convergence criterion
 #' @param maxit The maximum number of iterations
 #' @param verb If true, then various updates are printed during each iteration of the algorithm
-#' @param is.profile If true, profile variance-covariance matrix will be computed
+#' @param is.profile Used for computing profile variance. If true, beta and sigma2 will not be estimated
 #' @return A list with the following elements:
 #' \itemize{
 #' \item{pi} The final mixing probabilities
@@ -183,7 +183,7 @@ EM.mixme = function (Zm, Xv, Zv, y, lambda, muK, sigK, alpha, A, sigE, beta, sig
 #' @param tol The convergence criterion
 #' @param maxit The maximum number of iterations
 #' @param verb If true, then various updates are printed during each iteration of the algorithm
-#' @param is.profile If true, estimate nuisance parameters based on profile likelihood method
+#' @param is.profile Used for computing profile variance. If true, beta and sigma2 will not be estimated
 #' @return A list with the following elements:
 #' \itemize{
 #' \item{pi} The final mixing probabilities
@@ -268,11 +268,10 @@ EM.mix = function (X, y, lambda, muK, sigK, beta, sigma2, tol=1e-5, maxit=5000, 
 #' }
 #' @export
 #' 
-gmm.sel = function(X, M, alpha, lambda, muK, sigK, maxit=5000, tol=1e-5, verb=FALSE) {
+gmm.sel = function(X, M, alpha, lambda, muK, sigK, maxit=5000, tol=1e-6, verb=FALSE) {
   ##
   K <- length(lambda); nm <- nrow(X); p = ncol(X)
-  ## initial values
-  df <- 1 + 1.5*p + p^2/2
+  df <- 1 + 1.5* + p^2/2
   #### E-step
   ## Pr(Gi=k|Yi) return a n*K matrix
   tildeomg = function(lambda, X, muK, sigK) {
@@ -291,7 +290,7 @@ gmm.sel = function(X, M, alpha, lambda, muK, sigK, maxit=5000, tol=1e-5, verb=FA
   # hatlambda = function(tildeomg1) colSums(tildeomg1)/nm # standard
   hatlambda = function(tildeomg1, Mhat) {
     temp <- (colSums(tildeomg1)/nm - alpha*df) / (1 - Mhat*alpha*df)
-    temp <- temp[temp > 0]
+    temp <- temp[abs(temp) > tol]
     return(temp)
   }
   ## update muK
@@ -311,7 +310,7 @@ gmm.sel = function(X, M, alpha, lambda, muK, sigK, maxit=5000, tol=1e-5, verb=FA
     ## Update E Step
     lambda <- hatlambda(tildeomg1, Mhat)
     print(lambda)
-    if (length(lambda) == 0) break
+    if (length(lambda) == 0 | any(is.na(lambda))) break
     tildeomg1 <- tildeomg(lambda, X, muK, sigK)
     ## Update M Step
     muK <- hatmuK(tildeomg1)
