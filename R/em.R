@@ -271,7 +271,7 @@ EM.mix = function (X, y, lambda, muK, sigK, beta, sigma2, tol=1e-5, maxit=5000, 
 gmm.sel = function(X, M, alpha, lambda, muK, sigK, maxit=5000, tol=1e-6, verb=FALSE) {
   ##
   K <- length(lambda); nm <- nrow(X); p = ncol(X)
-  df <- 1 + 1.5* + p^2/2
+  df <- 1 + 1.5*p + p^2/2
   #### E-step
   ## Pr(Gi=k|Yi) return a n*K matrix
   tildeomg = function(lambda, X, muK, sigK) {
