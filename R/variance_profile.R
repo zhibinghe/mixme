@@ -27,7 +27,7 @@ mixme.variance = function(Zm, Xv, Zv, y, lambda, muK, sigK, alpha, A, sigE, beta
     hn[j] <- 1/sqrt(nm+nv)
     theta.profile.new <- theta.profile + hn
     est.nuisance <- EM.mixme(Zm, Xv, Zv, y, lambda, muK, sigK, alpha, A, sigE, beta=theta.profile.new[1:K], 
-                             sigma2=theta.profile.new[K+1], is.profile=TRUE)
+                             sigma2=theta.profile.new[K+1], is.profile=TRUE, maxit=maxit)
     log.profile[,j] <- obs_loglik.mixme(Zm, Xv, Zv, y, est.nuisance$pi, est.nuisance$mu, est.nuisance$sigK,
                                         est.nuisance$alpha, est.nuisance$A, est.nuisance$sigE,
                                         theta.profile.new[1:K], theta.profile.new[K+1]) 
@@ -62,7 +62,7 @@ mix.variance = function(X, y, lambda, muK, sigK, beta, sigma2) {
     hn[j] <- 1/sqrt(nm)
     theta.profile.new <- theta.profile + hn
     est.nuisance <- EM.mix(X, y, lambda, muK, sigK, beta=theta.profile.new[1:K], 
-                           sigma2=theta.profile.new[K+1], is.profile=TRUE)
+                           sigma2=theta.profile.new[K+1], is.profile=TRUE, maxit=maxit)
     log.profile[,j] <- obs_loglik.mix(X, y, est.nuisance$pi, est.nuisance$mu, est.nuisance$sigK,
                                       theta.profile.new[1:K], theta.profile.new[K+1])
   }
