@@ -33,7 +33,7 @@
 #' @export
 #' 
 EM.mixme = function (Zm, Xv, Zv, y, lambda, muK, sigK, alpha, A, sigE, beta, sigma2, tol=1e-5, maxit=5000, verb=FALSE, is.profile=FALSE) {
-  K <- length(lambda); nm <- nrow(Zm); nv <- nrow(Zv)
+  K <- length(lambda); nm <- nrow(Zm); nv <- nrow(Zv); p <- ncol(Zm)
   ## E(Zi|Gi=k), return a K*p matrix
   Ezg = function(muK, alpha, A) t(A %*% t(muK) + alpha)
   ## Var(Zi|Gi=k), return a p*p*K array

@@ -196,7 +196,7 @@ mix.lm = function (X, y, K, lambda, muK, sigK, beta, sigma2, tol=1e-5, maxit=500
   model <- EM.mix(X, y, lambda, muK, sigK, beta, sigma2, tol, maxit, verb)
   #### profile variance 
   temp <- NULL
-  if (variance) temp <- mix.variance(X, y, model$pi, model$mu, model$sigK, model$beta, model$sigma2)
+  if (variance) temp <- mix.variance(X, y, model$pi, model$mu, model$sigK, model$beta, model$sigma2, maxit=maxit)
   model$variance <- temp
   return(model)
 }
@@ -284,7 +284,7 @@ mixme.lm = function(Zm, Xv, Zv, y, K, lambda, muK, sigK, alpha, A, sigE, beta, s
   #### profile variance 
   temp <- NULL
   if (variance) mixme.variance(Zm, Xv, Zv, y, model$pi, model$mu, model$sigK, model$alpha, model$A, model$sigE,
-                         model$beta, model$sigma2)
+                         model$beta, model$sigma2, maxit=maxit)
   model$variance <- temp
   return(model)
 }
@@ -311,7 +311,7 @@ mixme.lm = function(Zm, Xv, Zv, y, K, lambda, muK, sigK, alpha, A, sigE, beta, s
 #' }
 #' @export
 #' 
-gmm.sel = function(X, M, alpha, lambda, muK, sigK, maxit=5000, tol=1e-6, verb=FALSE) {
+gmm.sel = function(X, M, alpha, lambda, muK, sigK, maxit=5000, tol=1e-4, verb=FALSE) {
   ##
   K <- length(lambda); nm <- nrow(X); p = ncol(X)
   df <- 1 + 1.5* + p^2/2

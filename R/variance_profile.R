@@ -12,10 +12,11 @@
 #' @inheritParams mixme.lm
 #' @inheritParams mixme.lm
 #' @inheritParams mixme.lm
+#' @inheritParams mixme.lm
 #' @export
 #' @return A variance-covariance matrix of (\code{beta}, \code{sigma2})
 #' 
-mixme.variance = function(Zm, Xv, Zv, y, lambda, muK, sigK, alpha, A, sigE, beta, sigma2) {
+mixme.variance = function(Zm, Xv, Zv, y, lambda, muK, sigK, alpha, A, sigE, beta, sigma2, maxit) {
   ##
   nm <- nrow(Zm); nv <- nrow(Xv)
   log.theta <- obs_loglik.mixme(Zm, Xv, Zv, y, lambda, muK, sigK, alpha, A, sigE, beta, sigma2)
@@ -23,6 +24,7 @@ mixme.variance = function(Zm, Xv, Zv, y, lambda, muK, sigK, alpha, A, sigE, beta
   theta.profile <- c(beta, sigma2)
   # compute profile log-likelihood
   for(j in 1:(K+1)) {
+    cat("===========processing: ", j, "/", K+1, "\n")
     hn <- rep(0, K+1)
     hn[j] <- 1/sqrt(nm+nv)
     theta.profile.new <- theta.profile + hn
@@ -47,10 +49,11 @@ mixme.variance = function(Zm, Xv, Zv, y, lambda, muK, sigK, alpha, A, sigE, beta
 #' @inheritParams mixme.lm
 #' @inheritParams mixme.lm
 #' @inheritParams mixme.lm
+#' @inheritParams mixme.lm
 #' @export
 #' @return A variance-covariance matrix of (\code{beta}, \code{sigma2})
 #'
-mix.variance = function(X, y, lambda, muK, sigK, beta, sigma2) {
+mix.variance = function(X, y, lambda, muK, sigK, beta, sigma2, maxit) {
   # compute log-likelihood 
   log.theta <- obs_loglik.mix(X, y, lambda, muK, sigK, beta, sigma2)
   # compute profile log-likelihood
@@ -58,6 +61,7 @@ mix.variance = function(X, y, lambda, muK, sigK, beta, sigma2) {
   log.profile <- matrix(NA, nr=nm, nc=K+1)
   theta.profile <- c(beta, sigma2)
   for(j in 1:(K+1)) {
+    cat("===========processing: ", j, "/", K+1, "\n")
     hn <- rep(0, K+1)
     hn[j] <- 1/sqrt(nm)
     theta.profile.new <- theta.profile + hn
