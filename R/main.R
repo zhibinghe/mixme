@@ -182,7 +182,7 @@ obs_loglik.mix = function (X, y, lambda, muK, sigK, beta, sigma2) {
 #' }
 #' @export
 #' 
-mix.lm = function (X, y, K, lambda, muK, sigK, beta, sigma2, tol=1e-5, maxit=5000, verb=TRUE, variance=TRUE) {
+mix.lm = function (X, y, K, lambda, muK, sigK, beta, sigma2, tol=1e-5, maxit=5000, verb=TRUE, variance=FALSE) {
   X <- as.matrix(X)
   p <- ncol(X)
   nm <- nrow(X)
@@ -212,8 +212,8 @@ mix.lm = function (X, y, K, lambda, muK, sigK, beta, sigma2, tol=1e-5, maxit=500
 #' @inheritParams mix.lm
 #' @return output of mixtools::mvnormalmixEM
 #' @export
-#' 
-mereg = function(Zm, Xv, Zv, lambda, muK, sigK, tol=1e-5, maxit=5000, verb=FALSE) {
+#' need to be fixed
+mereg = function(Zm, Xv, Zv, lambda, muK, sigK, tol=1e-5, maxit=5000, verb=TRUE) {
   mod.dat <- as.data.frame(cbind(Xv, Zv))
   colnames(mod.dat) <- c(paste("X", 1:ncol(Xv), sep=""), paste("Z", 1:ncol(Zv), sep=""))
   Zm <- as.data.frame(Zm)
@@ -261,7 +261,7 @@ mereg = function(Zm, Xv, Zv, lambda, muK, sigK, tol=1e-5, maxit=5000, verb=FALSE
 #' @export
 #' 
 mixme.lm = function(Zm, Xv, Zv, y, K, lambda, muK, sigK, alpha, A, sigE, beta, sigma2,
-                    tol=1e-5, maxit=5000, verb=TRUE, variance=TRUE) {
+                    tol=1e-5, maxit=5000, verb=TRUE, variance=FALSE) {
   #### mixme EM algorithm 
   Zm <- as.matrix(Zm); Zv <- as.matrix(Zv); Xv <- as.matrix(Xv)
   p <- ncol(Xv); nm <- nrow(Zm); nv <- nrow(Zv)
@@ -280,8 +280,7 @@ mixme.lm = function(Zm, Xv, Zv, y, K, lambda, muK, sigK, alpha, A, sigE, beta, s
     sigE <- kmeans_mod$sigE
   }
   ## LM initial
-  model <- EM.mixme(Zm, Xv, Zv, y, lambda, muK, sigK, alpha, A, sigE, beta, sigma2, 
-                    tol=tol, maxit=maxit, verb=verb, is.profile=FALSE)
+  model <- EM.mixme(Zm, Xv, Zv, y, lambda, muK, sigK, alpha, A, sigE, beta, sigma2, tol, maxit, verb)
   #### profile variance 
   temp <- NULL
   if (variance) mixme.variance(Zm, Xv, Zv, y, model$pi, model$mu, model$sigK, model$alpha, model$A, model$sigE,
@@ -289,3 +288,86 @@ mixme.lm = function(Zm, Xv, Zv, y, K, lambda, muK, sigK, alpha, A, sigE, beta, s
   model$variance <- temp
   return(model)
 }
+
+#' @title Component selection in Gaussian mixture model
+#' @inheritParams EM.mix
+#' @param M initial number of components
+#' @param alpha tuning parameter controlling degree of penalty
+#' @inheritParams EM.mix
+#' @inheritParams EM.mix
+#' @inheritParams EM.mix
+#' @inheritParams EM.mix
+#' @inheritParams EM.mix
+#' @inheritParams EM.mix
+#' @return A list with the following elements:
+#' \itemize{
+#' \item{pi} The final mixing probabilities, only containing selected nonzero lambda
+#' \item{mu} The final mean vectors
+#' \item{sigK} The final variance matrix of each component
+#' \item{posterior} Membership probability
+#' \item{iter} Number of iterations
+#' \item{loglik} log-likelihood of observed data
+#' \item{bic_loglik} bic criteria 
+#' }
+#' @export
+#' 
+gmm.sel = function(X, M, alpha, lambda, muK, sigK, maxit=5000, tol=1e-6, verb=FALSE) {
+  ##
+  K <- length(lambda); nm <- nrow(X); p = ncol(X)
+  df <- 1 + 1.5* + p^2/2
+  #### E-step
+  ## Pr(Gi=k|Yi) return a n*K matrix
+  tildeomg = function(lambda, X, muK, sigK) {
+    temp <- do.call(cbind, lapply(1:length(lambda), function(k)
+      lambda[k] * mvtnorm::dmvnorm(X, muK[k,], sigK[,,k]) ))
+    return(temp/rowSums(temp))
+  }
+  obs.loglik = function(X, lambda) {
+    ## 
+    temp <- lapply(1:length(lambda), function(k) lambda[k] * mvtnorm::dmvnorm(X, muK[k,], sigK[,,k]))
+    temp <- do.call(cbind, temp)
+    return(log(rowSums(temp)))
+  }
+  #### M-step
+  ## update lambda
+  # hatlambda = function(tildeomg1) colSums(tildeomg1)/nm # standard
+  hatlambda = function(tildeomg1, Mhat) {
+    temp <- (colSums(tildeomg1)/nm - alpha*df) / (1 - Mhat*alpha*df)
+    temp <- temp[abs(temp) > tol]
+    return(temp)
+  }
+  ## update muK
+  hatmuK = function(tildeomg1) do.call(rbind, lapply(1:ncol(tildeomg1), function(k) colSums(tildeomg1[,k] * X)/sum(tildeomg1[,k])))
+  ## update sigK
+  hatsigK = function(tildeomg1, muK)
+    list2array(lapply(1:ncol(tildeomg1), function(k) Reduce("+", array2list(outf(t(sqrt(tildeomg1[,k]) *(X - muK[k,]))))) / sum(tildeomg1[,k])))
+  #### EM Iteration
+  count <- 0
+  diff <- 1
+  loglik <- sum(obs.loglik(X, lambda))
+  tildeomg1 <- tildeomg(lambda, X, muK, sigK)
+  while (count < maxit & diff > tol){
+    #
+    old_loglik <- loglik
+    Mhat <- length(lambda)
+    ## Update E Step
+    lambda <- hatlambda(tildeomg1, Mhat)
+    print(lambda)
+    if (length(lambda) == 0 | any(is.na(lambda))) break
+    tildeomg1 <- tildeomg(lambda, X, muK, sigK)
+    ## Update M Step
+    muK <- hatmuK(tildeomg1)
+    sigK <- hatsigK(tildeomg1, muK)
+    ## convergence criterion
+    loglik <- sum(obs.loglik(X, lambda))
+    diff <- abs(loglik - old_loglik)
+    bic_loglik <- loglik - 0.5*length(lambda)*df*log(nm)
+    count <- count + 1
+    if(verb) cat("iteration = ", count, "Log-likelihood diff is ", diff, 
+                 "Observed log-likelihood is ", loglik, "\n")
+  }
+  if (length(lambda) !=0) lambda <- lambda/sum(lambda)
+  return(list(pi=lambda/sum(lambda), mu=muK, sigK=sigK, posterior=tildeomg1, iter=count, loglik=loglik, bic_loglik=bic_loglik))
+}
+
+
