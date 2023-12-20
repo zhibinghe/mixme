@@ -16,7 +16,7 @@ mix.lm(
   tol = 1e-05,
   maxit = 5000,
   verb = TRUE,
-  variance = TRUE
+  variance = FALSE
 )
 }
 \arguments{

@@ -4,7 +4,7 @@
 \alias{mix.variance}
 \title{Variance-covariance Estimate by Profile Likelihood Method}
 \usage{
-mix.variance(X, y, lambda, muK, sigK, beta, sigma2)
+mix.variance(X, y, lambda, muK, sigK, beta, sigma2, maxit)
 }
 \arguments{
 \item{X}{A matrix consisting of the data}
@@ -21,6 +21,8 @@ K-means variance is specified if NULL}
 \item{beta}{A vector size K containing initial linear coefficients}
 
 \item{sigma2}{A scalar of initial variance of random noise in linear model}
+
+\item{maxit}{The maximum number of iterations}
 }
 \value{
 A variance-covariance matrix of (\code{beta}, \code{sigma2})

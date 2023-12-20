@@ -52,7 +52,7 @@ A list with the following elements
 \item{Zv} Surrogate data in the validation study
 \item{Xv} True observations in the validation study
 \item{y} The outcome of linear model
-\item{cluster.m} The True cluster labels of units in the main study
+\item{cluster.m} The true cluster labels of units in the main study
 }
 }
 \description{

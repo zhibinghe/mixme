@@ -4,7 +4,21 @@
 \alias{mixme.variance}
 \title{Variance-covariance Estimate by Profile Likelihood Method}
 \usage{
-mixme.variance(Zm, Xv, Zv, y, lambda, muK, sigK, alpha, A, sigE, beta, sigma2)
+mixme.variance(
+  Zm,
+  Xv,
+  Zv,
+  y,
+  lambda,
+  muK,
+  sigK,
+  alpha,
+  A,
+  sigE,
+  beta,
+  sigma2,
+  maxit
+)
 }
 \arguments{
 \item{Zm}{Surogate data in the main study}
@@ -31,6 +45,8 @@ K-means variance is specified if NULL}
 \item{beta}{A vector size K containing initial linear coefficients}
 
 \item{sigma2}{A scalar of initial variance of random noise in linear model}
+
+\item{maxit}{The maximum number of iterations}
 }
 \value{
 A variance-covariance matrix of (\code{beta}, \code{sigma2})

@@ -40,7 +40,7 @@ K-means variance is specified if NULL}
 
 \item{verb}{If true, then various updates are printed during each iteration of the algorithm}
 
-\item{is.profile}{If true, estimate nuisance parameters based on profile likelihood method}
+\item{is.profile}{Used for computing profile variance. If true, beta and sigma2 will not be estimated}
 }
 \value{
 A list with the following elements:

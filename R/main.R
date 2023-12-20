@@ -205,32 +205,30 @@ mix.lm = function (X, y, K, lambda, muK, sigK, beta, sigma2, tol=1e-5, maxit=500
 #' @param Zm Surogate data in the main study
 #' @param Xv True observations in the validation study
 #' @param Zv Surogate data in the validation study
+#' @param y  A vector consisting of outcome of linear model
+#' @param K number of clusters
 #' @inheritParams mix.lm
 #' @inheritParams mix.lm
 #' @inheritParams mix.lm
-#' @inheritParams mix.lm
-#' @inheritParams mix.lm
-#' @return output of mixtools::mvnormalmixEM
+#' @return output of linear outcome model
 #' @export
-#' need to be fixed
-mereg = function(Zm, Xv, Zv, lambda, muK, sigK, tol=1e-5, maxit=5000, verb=TRUE) {
-  mod.dat <- as.data.frame(cbind(Xv, Zv))
-  colnames(mod.dat) <- c(paste("X", 1:ncol(Xv), sep=""), paste("Z", 1:ncol(Zv), sep=""))
-  Zm <- as.data.frame(Zm)
-  colnames(Zm) <- paste("Z", 1:ncol(Zm), sep="")
-  fit <- lm(cbind(X1, X2) ~ ., mod.dat)
-  predXm <- suppressWarnings(predict(fit, newdata=Zm))
-  mod <- mixtools::mvnormalmixEM(predXm, lambda=lambda, mu=lapply(1:nrow(muK), function(k) muK[k,]),
-                                 sigma=lapply(1:nrow(muK), function(k) sigK[,,k]),
-                                 k=nrow(muK), epsilon=tol, maxit=maxit, verb=verb)
-  return(mod)
+#' 
+mereg.lm = function(Zm, Xv, Zv, y, K, tol=1e-5, maxit=5000, verb=TRUE) {
+  Zm <- as.matrix(Zm)
+  Xv <- as.matrix(Xv)
+  Zv <- as.matirx(Zv)
+  fit <- lm(Xv ~ Zv)
+  predXm <- t(t(Zm %*% coef(fit)[-1,]) + coef(fit)[1,])
+  model <- mixtools::mvnormalmixEM(predXm, k=K, epsilon=tol, maxit=maxit, verb=verb)
+  reg <- lm(y ~ -1 + ., data=as.data.frame(cbind(y, model$posterior)))
+  return(reg)
 }
 
 #' @title Gaussian Mixture Model Combined with Measurement Error and Linear model
 #' @description simultaneously estimate all the parameters
-#' @inheritParams mereg
-#' @inheritParams mereg
-#' @inheritParams mereg
+#' @inheritParams mereg.lm
+#' @inheritParams mereg.lm
+#' @inheritParams mereg.lm
 #' @inheritParams mix.lm
 #' @inheritParams mix.lm
 #' @inheritParams mix.lm
@@ -283,7 +281,7 @@ mixme.lm = function(Zm, Xv, Zv, y, K, lambda, muK, sigK, alpha, A, sigE, beta, s
   model <- EM.mixme(Zm, Xv, Zv, y, lambda, muK, sigK, alpha, A, sigE, beta, sigma2, tol, maxit, verb)
   #### profile variance 
   temp <- NULL
-  if (variance) mixme.variance(Zm, Xv, Zv, y, model$pi, model$mu, model$sigK, model$alpha, model$A, model$sigE,
+  if (variance) temp <- mixme.variance(Zm, Xv, Zv, y, model$pi, model$mu, model$sigK, model$alpha, model$A, model$sigE,
                          model$beta, model$sigma2, maxit=maxit)
   model$variance <- temp
   return(model)

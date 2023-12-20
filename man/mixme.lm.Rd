@@ -21,7 +21,7 @@ mixme.lm(
   tol = 1e-05,
   maxit = 5000,
   verb = TRUE,
-  variance = TRUE
+  variance = FALSE
 )
 }
 \arguments{
@@ -33,7 +33,7 @@ mixme.lm(
 
 \item{y}{A vector consisting of outcome of linear model}
 
-\item{K}{Number of components}
+\item{K}{number of clusters}
 
 \item{lambda}{A vector of size K containing initial value of mixting probabilities}
 
