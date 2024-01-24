@@ -50,9 +50,9 @@ gendat = function(n1, n2, lambda, muK, sigK, alpha, A, sigE, beta, sigma2, is.di
   Xv <- genX(n2, is.diff=is.diff)$X
   Xm.data <- genX(n1, is.diff=FALSE)
   Xm <- Xm.data$X
-  ym <- colSums(t(indexMatrix(Xm.data$ind.cluster)) * beta) + rnorm(nrow(Xm), 0, sd=sqrt(sigma2))
-  Zv <- alpha + A %*% t(Xv) + t(mvtnorm::rmvnorm(nrow(Xv), mean=rep(0,nrow(sigE)), sigE))
-  Zm <- alpha + A %*% t(Xm) + t(mvtnorm::rmvnorm(nrow(Xm), mean=rep(0,nrow(sigE)), sigE))
+  ym <- colSums(t(indexMatrix(Xm.data$ind.cluster)) * beta) + rnorm(n1, 0, sd=sqrt(sigma2))
+  Zv <- alpha + A %*% t(Xv) + t(mvtnorm::rmvnorm(n2, mean=rep(0,nrow(sigE)), sigE))
+  Zm <- alpha + A %*% t(Xm) + t(mvtnorm::rmvnorm(n1, mean=rep(0,nrow(sigE)), sigE))
   return(list(Zm=t(Zm), Xm=Xm, Zv=t(Zv), Xv=Xv, y=ym, cluster.m=Xm.data$ind.cluster))
 }
 
