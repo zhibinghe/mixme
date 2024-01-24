@@ -124,7 +124,7 @@ EM.mixme = function (Zm, Xv, Zv, y, lambda, muK, sigK, alpha, A, sigE, beta, sig
   ## update beta
   hatbeta = function(tildeomg1, y) colSums(tildeomg1 * y) / colSums(tildeomg1)
   ##
-  hatsigma2 = function(beta, tildeomg1) (sum(y^2) + sum(t(tildeomg1)*beta^2) + sum(y*colSums(t(tildeomg1)*beta))) /nm
+  hatsigma2 = function(beta, tildeomg1) (sum(y^2) + sum(t(tildeomg1)*beta^2) - sum(2*y*colSums(t(tildeomg1)*beta))) /nm
   #### log-likelihood
   
   #### EM Iteration
@@ -214,7 +214,7 @@ EM.mix = function (X, y, lambda, muK, sigK, beta, sigma2, tol=1e-5, maxit=5000, 
   ## update  beta
   hatbeta = function(tildeomg1, y) colSums(tildeomg1 * y) / colSums(tildeomg1)
   ##
-  hatsigma2 = function(beta, tildeomg1) (sum(y^2) + sum(t(tildeomg1)*beta^2) + sum(y*colSums(t(tildeomg1)*beta))) /nm
+  hatsigma2 = function(beta, tildeomg1) (sum(y^2) + sum(t(tildeomg1)*beta^2) - sum(2*y*colSums(t(tildeomg1)*beta))) /nm
   #### EM Iteration
   count <- 0
   diff <- 1
