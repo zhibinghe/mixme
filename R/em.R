@@ -124,7 +124,7 @@ EM.mixme = function (Zm, Xv, Zv, y, lambda, muK, sigK, alpha, A, sigE, beta, sig
   ## update beta
   hatbeta = function(tildeomg1, y) colSums(tildeomg1 * y) / colSums(tildeomg1)
   ##
-  hatsigma2 = function(sigma0, beta, beta0, tildeomg1) sigma0^2 + sum(t(tildeomg1) * (beta - beta0)^2)/nm
+  hatsigma2 = function(beta, tildeomg1) (sum(y^2) + sum(t(tildeomg1)*beta^2) + sum(y*rowSums(t(tildeomg1)*beta))) /nm
   #### log-likelihood
   
   #### EM Iteration
@@ -132,8 +132,6 @@ EM.mixme = function (Zm, Xv, Zv, y, lambda, muK, sigK, alpha, A, sigE, beta, sig
   diff <- 1
   loglik <- sum(obs_loglik.mixme(Zm, Xv, Zv, y, lambda, muK, sigK, alpha, A, sigE, beta, sigma2))
   while (count < maxit & diff > tol) {
-    #
-    beta0 <- beta; sigma0 <- sqrt(sigma2)
     old_loglik <- loglik
     ## Update E Step
     Ezg1 <- Ezg(muK, alpha, A)
@@ -158,7 +156,7 @@ EM.mixme = function (Zm, Xv, Zv, y, lambda, muK, sigK, alpha, A, sigE, beta, sig
     if (!is.profile) {
       # update estimate of profile parameters
       beta <- hatbeta(tildeomg1, y)
-      sigma2 <- hatsigma2(sigma0, beta, beta0, tildeomg1)
+      sigma2 <- hatsigma2(beta, tildeomg1)
     }
     ## convergence criterion
     loglik <- sum(obs_loglik.mixme(Zm, Xv, Zv, y, lambda, muK, sigK, alpha, A, sigE, beta, sigma2))
@@ -216,15 +214,13 @@ EM.mix = function (X, y, lambda, muK, sigK, beta, sigma2, tol=1e-5, maxit=5000, 
   ## update  beta
   hatbeta = function(tildeomg1, y) colSums(tildeomg1 * y) / colSums(tildeomg1)
   ##
-  hatsigma2 = function(sigma0, beta, beta0, tildeomg1) sigma0^2 + sum(t(tildeomg1) * (beta - beta0)^2)/nm
+  hatsigma2 = function(beta, tildeomg1) (sum(y^2) + sum(t(tildeomg1)*beta^2) + sum(y*rowSums(t(tildeomg1)*beta))) /nm
   #### EM Iteration
   count <- 0
   diff <- 1
   loglik <- sum(obs_loglik.mix(X, y, lambda, muK, sigK, beta, sigma2))
   while (count < maxit & diff > tol){
-    #
     old_loglik <- loglik
-    beta0 <- beta; sigma0 <- sqrt(sigma2)
     ## Update E Step
     tildeomg1 <- tildeomg(lambda, X, y, beta, sigma2, muK, sigK)
     ## Update M Step
@@ -234,7 +230,7 @@ EM.mix = function (X, y, lambda, muK, sigK, beta, sigma2, tol=1e-5, maxit=5000, 
     if (!is.profile) {
       # update estimate of profile parameters
       beta <- hatbeta(tildeomg1, y)
-      sigma2 <- hatsigma2(sigma0, beta, beta0, tildeomg1)
+      sigma2 <- hatsigma2(beta, tildeomg1)
     }
     ## convergence criterion
     loglik <- sum(obs_loglik.mix(X, y, lambda, muK, sigK, beta, sigma2))

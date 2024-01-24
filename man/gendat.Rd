@@ -15,7 +15,6 @@ gendat(
   sigE,
   beta,
   sigma2,
-  Tn1 = 1,
   is.diff = FALSE
 )
 }
@@ -39,8 +38,6 @@ gendat(
 \item{beta}{A vector of size K consisting of linear coefficients in linear model}
 
 \item{sigma2}{A scalar of variance of random noise in linear model}
-
-\item{Tn1}{A scalar or a vector of size n1, repeat observations of units in Main study}
 
 \item{is.diff}{If true, the distributions of data in main study and validation study are different}
 }

@@ -16,7 +16,6 @@ outf = function(mat) array(apply(mat, 2, function(x) outer(x,x)), dim=c(nrow(mat
 #' @param sigE A matrix of size p*P consisting of variance of noise in measurement error model
 #' @param beta A vector of size K consisting of linear coefficients in linear model
 #' @param sigma2 A scalar of variance of random noise in linear model
-#' @param Tn1 A scalar or a vector of size n1, repeat observations of units in Main study 
 #' @param is.diff If true, the distributions of data in main study and validation study are different
 #' @return A list with the following elements
 #' \itemize{
@@ -29,33 +28,31 @@ outf = function(mat) array(apply(mat, 2, function(x) outer(x,x)), dim=c(nrow(mat
 #' }
 #' @export
 #' 
-gendat = function(n1, n2, lambda, muK, sigK, alpha, A, sigE, beta, sigma2, Tn1=1, is.diff=FALSE) {
+gendat = function(n1, n2, lambda, muK, sigK, alpha, A, sigE, beta, sigma2, is.diff=FALSE) {
   K <- length(lambda)
   p <- length(alpha)
   lambda <- lambda/sum(lambda)
   # Generate true observation
-  genX = function(size, is.diff, w=1) {
+  genX = function(size, is.diff) {
     # random cluster allocation
     indclus <- sample(1:K, size, replace=T, prob=lambda)
-    if (length(w) == 1) indclus <- rep(indclus, each=w)
-    else indclus  = rep(indclus, times=w)
-    X <- matrix(NA,length(indclus), p)
+    X <- matrix(NA, nrow=size, ncol=p)
     for (k in 1:K) X[which(indclus==k),] <- mvtnorm::rmvnorm(sum(indclus==k), muK[k,], sigK[,,k])
-    if (is.diff) X <- mvtnorm::rmvnorm(size, muK[-K,], sigK[,,-K])
+    if (is.diff) X <- mvtnorm::rmvnorm(size, muK[-K,], sigK[,,-K]) # only valid for two cluster case
     return(list(X=X, ind.cluster = indclus))
   }
   # convert cluster index to matrix form with dimension nm * K 
   indexMatrix = function(indvec) {
-    mat <- matrix(0, nrow = length(indvec), ncol = K) 
+    mat <- matrix(0, nrow=length(indvec), ncol=K) 
     mat[cbind(seq_along(indvec), indvec)] <- 1
     return(mat)
   }
-  Xv <- genX(n2,is.diff = is.diff)$X
-  Xm.data <- genX(n1, is.diff=FALSE, w=Tn1)
+  Xv <- genX(n2, is.diff=is.diff)$X
+  Xm.data <- genX(n1, is.diff=FALSE)
   Xm <- Xm.data$X
-  ym <- colSums(t(indexMatrix(Xm.data$ind.cluster)) * beta) + rnorm(nrow(Xm), 0, sd = sqrt(sigma2))
-  Zv <- alpha + A %*% t(Xv) + t(mvtnorm::rmvnorm(nrow(Xv),mean = rep(0,nrow(sigE)), sigE))
-  Zm <- alpha + A %*% t(Xm) + t(mvtnorm::rmvnorm(nrow(Xm),mean = rep(0,nrow(sigE)), sigE))
+  ym <- colSums(t(indexMatrix(Xm.data$ind.cluster)) * beta) + rnorm(nrow(Xm), 0, sd=sqrt(sigma2))
+  Zv <- alpha + A %*% t(Xv) + t(mvtnorm::rmvnorm(nrow(Xv), mean=rep(0,nrow(sigE)), sigE))
+  Zm <- alpha + A %*% t(Xm) + t(mvtnorm::rmvnorm(nrow(Xm), mean=rep(0,nrow(sigE)), sigE))
   return(list(Zm=t(Zm), Xm=Xm, Zv=t(Zv), Xv=Xv, y=ym, cluster.m=Xm.data$ind.cluster))
 }
 
