@@ -210,7 +210,7 @@ EM.mix = function (X, y, lambda, muK, sigK, beta, sigma2, tol=1e-5, maxit=5000, 
   hatmuK = function(tildeomg1) do.call(rbind, lapply(1:K, function(k) colSums(tildeomg1[,k] * X)/sum(tildeomg1[,k])))
   ## update sigK
   hatsigK = function(tildeomg1, muK)
-    list2array(lapply(1:K, function(k) Reduce("+", array2list(outf(t(sqrt(tildeomg1[,k]) *t(t(X) - muK[k,]) )))) /sum(tildeomg1[,k]) )
+    list2array(lapply(1:K, function(k) Reduce("+", array2list(outf(t(sqrt(tildeomg1[,k]) *t(t(X) - muK[k,]) )))) /sum(tildeomg1[,k]) ))
   ## update  beta
   hatbeta = function(tildeomg1, y) colSums(tildeomg1 * y) / colSums(tildeomg1)
   ##
