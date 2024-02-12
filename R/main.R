@@ -31,14 +31,21 @@ outf = function(mat) array(apply(mat, 2, function(x) outer(x,x)), dim=c(nrow(mat
 gendat = function(n1, n2, lambda, muK, sigK, alpha, A, sigE, beta, sigma2, is.diff=FALSE) {
   K <- length(lambda)
   p <- length(alpha)
-  lambda <- lambda/sum(lambda)
   # Generate true observation
   genX = function(size, is.diff) {
     # random cluster allocation
-    indclus <- sample(1:K, size, replace=T, prob=lambda)
     X <- matrix(NA, nrow=size, ncol=p)
-    for (k in 1:K) X[which(indclus==k),] <- mvtnorm::rmvnorm(sum(indclus==k), muK[k,], sigK[,,k])
-    if (is.diff) X <- mvtnorm::rmvnorm(size, muK[-K,], sigK[,,-K]) # only valid for two cluster case
+    if (!is.diff) {
+      lambda <- lambda/sum(lambda)
+      indclus <- sample(1:K, size, replace=T, prob=lambda)
+      for (k in 1:K) X[which(indclus==k),] <- mvtnorm::rmvnorm(sum(indclus==k), muK[k,], sigK[,,k])
+    }
+    #
+    if (is.diff) {
+      lambda <- lambda[-K]; lambda <- lambda/sum(lambda)
+      indclus <- sample(1:(K-1), size, replace=T, prob=lambda)
+      for (k in 1:(K-1)) X[which(indclus==k),] <- mvtnorm::rmvnorm(sum(indclus==k), muK[k,], sigK[,,k])
+    }
     return(list(X=X, ind.cluster = indclus))
   }
   # convert cluster index to matrix form with dimension nm * K 
