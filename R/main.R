@@ -31,15 +31,23 @@ outf = function(mat) array(apply(mat, 2, function(x) outer(x,x)), dim=c(nrow(mat
 gendat = function(n1, n2, lambda, muK, sigK, alpha, A, sigE, beta, sigma2, is.diff=FALSE) {
   K <- length(lambda)
   p <- length(alpha)
-  lambda <- lambda/sum(lambda)
   # Generate true observation
   genX = function(size, is.diff) {
     # random cluster allocation
-    indclus <- sample(1:K, size, replace=T, prob=lambda)
     X <- matrix(NA, nrow=size, ncol=p)
-    for (k in 1:K) X[which(indclus==k),] <- mvtnorm::rmvnorm(sum(indclus==k), muK[k,], sigK[,,k])
-    if (is.diff) X <- mvtnorm::rmvnorm(size, muK[-K,], sigK[,,-K]) # only valid for two cluster case
-    return(list(X=X, ind.cluster = indclus))
+    if (!is.diff) {
+      lambda <- lambda/sum(lambda)
+      indclus <- sample(1:K, size, replace=T, prob=lambda)
+      for (k in 1:K) X[which(indclus==k),] <- mvtnorm::rmvnorm(sum(indclus==k), muK[k,], sigK[,,k])
+    }
+    #
+    if (is.diff) {
+      # draw from only one cluster
+      ind <- which.max(lambda)
+      indclus <- rep(ind, size)
+      X <- mvtnorm::rmvnorm(size, muK[ind,], sigK[,,ind])
+    }
+    return(list(X=X, ind.cluster=indclus))
   }
   # convert cluster index to matrix form with dimension nm * K 
   indexMatrix = function(indvec) {
@@ -50,9 +58,9 @@ gendat = function(n1, n2, lambda, muK, sigK, alpha, A, sigE, beta, sigma2, is.di
   Xv <- genX(n2, is.diff=is.diff)$X
   Xm.data <- genX(n1, is.diff=FALSE)
   Xm <- Xm.data$X
-  ym <- colSums(t(indexMatrix(Xm.data$ind.cluster)) * beta) + rnorm(nrow(Xm), 0, sd=sqrt(sigma2))
-  Zv <- alpha + A %*% t(Xv) + t(mvtnorm::rmvnorm(nrow(Xv), mean=rep(0,nrow(sigE)), sigE))
-  Zm <- alpha + A %*% t(Xm) + t(mvtnorm::rmvnorm(nrow(Xm), mean=rep(0,nrow(sigE)), sigE))
+  ym <- colSums(t(indexMatrix(Xm.data$ind.cluster)) * beta) + rnorm(n1, 0, sd=sqrt(sigma2))
+  Zv <- alpha + A %*% t(Xv) + t(mvtnorm::rmvnorm(n2, mean=rep(0, p), sigE))
+  Zm <- alpha + A %*% t(Xm) + t(mvtnorm::rmvnorm(n1, mean=rep(0, p), sigE))
   return(list(Zm=t(Zm), Xm=Xm, Zv=t(Zv), Xv=Xv, y=ym, cluster.m=Xm.data$ind.cluster))
 }
 
@@ -309,7 +317,7 @@ mixme.lm = function(Zm, Xv, Zv, y, K, lambda, muK, sigK, alpha, A, sigE, beta, s
 gmm.sel = function(X, M, alpha, lambda, muK, sigK, maxit=5000, tol=1e-4, verb=FALSE) {
   ##
   K <- length(lambda); nm <- nrow(X); p = ncol(X)
-  df <- 1 + 1.5* + p^2/2
+  df <- 1 + 1.5*p + p^2/2
   #### E-step
   ## Pr(Gi=k|Yi) return a n*K matrix
   tildeomg = function(lambda, X, muK, sigK) {
