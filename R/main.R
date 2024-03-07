@@ -247,6 +247,7 @@ mereg.lm = function(Zm, Xv, Zv, y, K, tol=1e-5, maxit=5000, verb=TRUE) {
 #' @inheritParams mix.lm
 #' @inheritParams mix.lm
 #' @inheritParams mix.lm
+#' @param simpleerr if TRUE, the simple measurement error form: surrogate is true plus error
 #' @param variance If true, variance of \code{beta} and \code{sigma2} are estimated based on profile likelihood method
 #' @return A list with the following elements:
 #' \itemize{
@@ -264,7 +265,7 @@ mereg.lm = function(Zm, Xv, Zv, y, K, tol=1e-5, maxit=5000, verb=TRUE) {
 #' @export
 #' 
 mixme.lm = function(Zm, Xv, Zv, y, K, lambda, muK, sigK, alpha, A, sigE, beta, sigma2,
-                    tol=1e-5, maxit=5000, verb=TRUE, variance=FALSE) {
+                    tol=1e-5, maxit=5000, verb=TRUE, variance=FALSE, simpleerr=TRUE) {
   #### mixme EM algorithm 
   Zm <- as.matrix(Zm); Zv <- as.matrix(Zv); Xv <- as.matrix(Xv)
   p <- ncol(Xv); nm <- nrow(Zm); nv <- nrow(Zv)
@@ -283,11 +284,11 @@ mixme.lm = function(Zm, Xv, Zv, y, K, lambda, muK, sigK, alpha, A, sigE, beta, s
     sigE <- kmeans_mod$sigE
   }
   ## LM initial
-  model <- EM.mixme(Zm, Xv, Zv, y, lambda, muK, sigK, alpha, A, sigE, beta, sigma2, tol, maxit, verb)
+  model <- EM.mixme(Zm, Xv, Zv, y, lambda, muK, sigK, alpha, A, sigE, beta, sigma2, tol, maxit, verb, simpleerr=simpleerr)
   #### profile variance 
   temp <- NULL
   if (variance) temp <- mixme.variance(Zm, Xv, Zv, y, model$pi, model$mu, model$sigK, model$alpha, model$A, model$sigE,
-                         model$beta, model$sigma2, maxit=maxit)
+                         model$beta, model$sigma2, maxit=maxit, simpleerr=simpleerr)
   model$variance <- temp
   return(model)
 }

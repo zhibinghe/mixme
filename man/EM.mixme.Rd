@@ -20,6 +20,7 @@ EM.mixme(
   tol = 1e-05,
   maxit = 5000,
   verb = FALSE,
+  simpleerr = TRUE,
   is.profile = FALSE
 )
 }
@@ -54,6 +55,8 @@ K-means variance is specified if NULL}
 \item{maxit}{The maximum number of iterations}
 
 \item{verb}{If true, then various updates are printed during each iteration of the algorithm}
+
+\item{simpleerr}{if TRUE, the simple measurement error form: surrogate is true plus error}
 
 \item{is.profile}{Used for computing profile variance. If true, beta and sigma2 will not be estimated}
 

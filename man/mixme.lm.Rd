@@ -21,7 +21,8 @@ mixme.lm(
   tol = 1e-05,
   maxit = 5000,
   verb = TRUE,
-  variance = FALSE
+  variance = FALSE,
+  simpleerr = TRUE
 )
 }
 \arguments{
@@ -59,6 +60,8 @@ K-means variance is specified if NULL}
 \item{verb}{If true, then various updates are printed during each iteration of the algorithm}
 
 \item{variance}{If true, variance of \code{beta} and \code{sigma2} are estimated based on profile likelihood method}
+
+\item{simpleerr}{if TRUE, the simple measurement error form: surrogate is true plus error}
 }
 \value{
 A list with the following elements:

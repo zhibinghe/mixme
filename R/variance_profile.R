@@ -13,10 +13,11 @@
 #' @inheritParams mixme.lm
 #' @inheritParams mixme.lm
 #' @inheritParams mixme.lm
+#' @param simpleerr if TRUE, simple measurement error form 
 #' @export
 #' @return A variance-covariance matrix of (\code{beta}, \code{sigma2})
 #' 
-mixme.variance = function(Zm, Xv, Zv, y, lambda, muK, sigK, alpha, A, sigE, beta, sigma2, maxit) {
+mixme.variance = function(Zm, Xv, Zv, y, lambda, muK, sigK, alpha, A, sigE, beta, sigma2, maxit, simpleerr=TRUE) {
   ##
   nm <- nrow(Zm); nv <- nrow(Xv)
   log.theta <- obs_loglik.mixme(Zm, Xv, Zv, y, lambda, muK, sigK, alpha, A, sigE, beta, sigma2)
@@ -29,7 +30,7 @@ mixme.variance = function(Zm, Xv, Zv, y, lambda, muK, sigK, alpha, A, sigE, beta
     hn[j] <- 1/sqrt(nm+nv)
     theta.profile.new <- theta.profile + hn
     est.nuisance <- EM.mixme(Zm, Xv, Zv, y, lambda, muK, sigK, alpha, A, sigE, beta=theta.profile.new[1:K], 
-                             sigma2=theta.profile.new[K+1], is.profile=TRUE, maxit=maxit)
+                             sigma2=theta.profile.new[K+1], is.profile=TRUE, maxit=maxit, simpleerr=simpleerr)
     log.profile[,j] <- obs_loglik.mixme(Zm, Xv, Zv, y, est.nuisance$pi, est.nuisance$mu, est.nuisance$sigK,
                                         est.nuisance$alpha, est.nuisance$A, est.nuisance$sigE,
                                         theta.profile.new[1:K], theta.profile.new[K+1]) 

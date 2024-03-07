@@ -17,7 +17,8 @@ mixme.variance(
   sigE,
   beta,
   sigma2,
-  maxit
+  maxit,
+  simpleerr = TRUE
 )
 }
 \arguments{
@@ -47,6 +48,8 @@ K-means variance is specified if NULL}
 \item{sigma2}{A scalar of initial variance of random noise in linear model}
 
 \item{maxit}{The maximum number of iterations}
+
+\item{simpleerr}{if TRUE, simple measurement error form}
 }
 \value{
 A variance-covariance matrix of (\code{beta}, \code{sigma2})

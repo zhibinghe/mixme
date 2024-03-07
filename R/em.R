@@ -16,7 +16,9 @@
 #' @param tol The convergence criterion
 #' @param maxit The maximum number of iterations
 #' @param verb If true, then various updates are printed during each iteration of the algorithm
+#' @param simpleerr if TRUE, the simple measurement error form: surrogate is true plus error
 #' @param is.profile Used for computing profile variance. If true, beta and sigma2 will not be estimated
+#' 
 #' @return A list with the following elements:
 #' \itemize{
 #' \item{pi} The final mixing probabilities
@@ -32,7 +34,8 @@
 #' }
 #' @export
 #' 
-EM.mixme = function (Zm, Xv, Zv, y, lambda, muK, sigK, alpha, A, sigE, beta, sigma2, tol=1e-5, maxit=5000, verb=FALSE, is.profile=FALSE) {
+EM.mixme = function (Zm, Xv, Zv, y, lambda, muK, sigK, alpha, A, sigE, beta, sigma2, tol=1e-5, maxit=5000, verb=FALSE,
+                     simpleerr=TRUE, is.profile=FALSE) {
   K <- length(lambda); nm <- nrow(Zm); nv <- nrow(Zv); p <- ncol(Zm)
   ## E(Zi|Gi=k), return a K*p matrix
   Ezg = function(muK, alpha, A) t(A %*% t(muK) + alpha)
@@ -146,9 +149,15 @@ EM.mixme = function (Zm, Xv, Zv, y, lambda, muK, sigK, alpha, A, sigE, beta, sig
     Zf <- rbind(Zm, Zv)
     Xf <- rbind(Exz1, Xv)
     ## Update M Step
-    alphaA <- hatalphaA(Xf, Zf, Exz1, Exxz1)
-    alpha <- alphaA$alpha
-    A <- alphaA$A
+    if (simpleerr) {
+      alpha <- rep(0, p)
+      A <- diag(p)
+    }
+    else {
+      alphaA <- hatalphaA(Xf, Zf, Exz1, Exxz1)
+      alpha <- alphaA$alpha
+      A <- alphaA$A
+    }
     sigE <- hatsigE(Xf, Zf, alpha, A, Exxz1)
     lambda <- hatlambda(tildeomg1)
     muK <- hatmuK(tildemuK1, tildeomg1)
