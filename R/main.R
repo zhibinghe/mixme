@@ -160,6 +160,42 @@ obs_loglik.mix = function (X, y, lambda, muK, sigK, beta, sigma2) {
   return(log(rowSums(temp)))
 }
 
+#' @title Gaussian Mixture Model
+#' @description Simultaneously estimate parameters in Gaussian mixture model combined with linear model
+#' @param X A matrix consisting of the data
+#' @param K Number of components
+#' @param lambda A vector of size K containing initial value of mixting probabilities
+#' @param muK A matrix of size K * p containing initial values of component mean, K-means center is specified if NULL
+#' @param sigK An array with size p*p*K containing K p*p matrix, each of which is initial values of component variance,
+#' K-means variance is specified if NULL
+#' @param tol The convergence criterion
+#' @param maxit The maximum number of iterations
+#' @param verb If true, then various updates are printed during each iteration of the algorithm
+#' @return A list with the following elements:
+#' \itemize{
+#' \item{pi} The final mixing probabilities
+#' \item{mu} The final mean vectors
+#' \item{sigK} The final variance matrix of each component
+#' \item{posterior} Membership probability
+#' \item{iter} Number of iterations
+#' }
+#' @export
+#' 
+gmm = function (X, K, lambda, muK, sigK, tol=1e-5, maxit=5000, verb=TRUE) {
+  X <- as.matrix(X)
+  p <- ncol(X)
+  nm <- nrow(X)
+  ## GMM initial based on K-means
+  if (missing(lambda) | missing(muK) | missing(sigK)) {
+    kmeans_mod <- mix.init(X, K)
+    lambda <- kmeans_mod$pi
+    muK <- kmeans_mod$mu
+    sigK <- kmeans_mod$sigK
+  }
+  model <- EM.gmm(X, lambda, muK, sigK, tol, maxit, verb)
+  return(model)
+}
+
 #' @title Gaussian Mixture Model Combined with Linear Model
 #' @description Simultaneously estimate parameters in Gaussian mixture model combined with linear model
 #' @param X A matrix consisting of the data

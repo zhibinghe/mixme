@@ -250,3 +250,68 @@ EM.mix = function (X, y, lambda, muK, sigK, beta, sigma2, tol=1e-5, maxit=5000, 
   }
   return(list(pi=lambda, mu=muK, sigK=sigK, beta=beta, sigma2=sigma2, posterior=tildeomg1, iter=count, loglik=loglik))
 }
+#' @title EM Algorithm for Gaussian Mixture Model
+#' @param X Surrogate data or observations in main study
+#' @param lambda A vector of size K containing initial value of mixing probabilities
+#' @param muK A matrix of size K * p containing initial values of component mean, K-means center is specified if NULL
+#' @param sigK An array with size p*p*K containing K p*p matrix, each of which is initial values of component variance,
+#' K-means variance is specified if NULL
+#' @param tol The convergence criterion
+#' @param maxit The maximum number of iterations
+#' @param verb If true, then various updates are printed during each iteration of the algorithm
+#' @return A list with the following elements:
+#' \itemize{
+#' \item{pi} The final mixing probabilities
+#' \item{mu} The final mean vectors
+#' \item{sigK} The final variance matrix of each component
+#' \item{posterior} Membership probability
+#' \item{iter} Number of iterations
+#' }
+#' @export
+#' 
+EM.gmm = function (X, lambda, muK, sigK, tol=1e-5, maxit=5000, verb=FALSE, is.profile=FALSE) {
+  #### E-step
+  K <- length(lambda); nm <- nrow(X)
+  ## Pr(Gi=k|Yi) return a n*K matrix
+  tildeomg = function(lambda, X, muK, sigK) {
+    temp <- do.call(cbind, lapply(1:K, function(k)
+      lambda[k] * mvtnorm::dmvnorm(X, muK[k,], sigK[,,k]) ))
+    return(temp/rowSums(temp))
+  }
+  #### M-step
+  ## update lambda
+  hatlambda = function(tildeomg1) colSums(tildeomg1)/nm
+  ## update muK
+  hatmuK = function(tildeomg1) do.call(rbind, lapply(1:K, function(k) colSums(tildeomg1[,k] * X)/sum(tildeomg1[,k])))
+  ## update sigK
+  hatsigK = function(tildeomg1, muK)
+    list2array(lapply(1:K, function(k) Reduce("+", array2list(outf(t(sqrt(tildeomg1[,k]) *t(t(X) - muK[k,]) )))) /sum(tildeomg1[,k]) ))
+  ## observed log-likelihood of mix.lm model
+  obs_loglik.gmm = function (X, lambda, muK, sigK) {
+    ## 
+    temp <- lapply(1:K, function(k) lambda[k] * mvtnorm::dmvnorm(X, muK[k,], sigK[,,k]))
+    temp <- do.call(cbind, temp)
+    return(log(rowSums(temp)))
+  }
+  #### EM Iteration
+  count <- 0
+  diff <- 1
+  loglik <- sum(obs_loglik.gmm(X, lambda, muK, sigK))
+  while (count < maxit & diff > tol){
+    old_loglik <- loglik
+    ## Update E Step
+    tildeomg1 <- tildeomg(lambda, X, muK, sigK)
+    ## Update M Step
+    lambda <- hatlambda(tildeomg1)
+    muK <- hatmuK(tildeomg1)
+    sigK <- hatsigK(tildeomg1, muK)
+    ## convergence criterion
+    loglik <- sum(obs_loglik.gmm(X, lambda, muK, sigK))
+    diff <- abs(loglik - old_loglik)
+    count <- count + 1
+    if(verb) cat("iteration = ", count, "Log-likelihood diff is ", diff, 
+                 "Observed log-likelihood is ", loglik, "\n")
+  }
+  return(list(pi=lambda, mu=muK, sigK=sigK, posterior=tildeomg1, iter=count, loglik=loglik))
+}
+
